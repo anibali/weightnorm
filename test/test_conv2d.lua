@@ -6,18 +6,18 @@ require('cunn')
 require('cudnn')
 local image = require('image')
 
-local SpatialConvolutionWN = require('weightnorm.SpatialConvolution')
+local WeightNorm = require('weightnorm.WeightNorm')
 
 function ts.test_conv2d_instantiate()
   local conv = nn.SpatialConvolution(3,8, 3,3, 1,1, 1,1)
-  local scwn = SpatialConvolutionWN.new(conv)
+  local scwn = WeightNorm.new(conv)
 
   tester:assert(torch.isTypeOf(scwn, 'nn.Module'), 'expected instance to be an nn.Module')
 end
 
 function ts.test_conv2d_clearState()
   local conv = nn.SpatialConvolution(3,8, 3,3, 1,1, 1,1)
-  local scwn = SpatialConvolutionWN.new(conv)
+  local scwn = WeightNorm.new(conv)
 
   local input = image.lena()
   local output = scwn:forward(input)
@@ -28,7 +28,7 @@ end
 
 function ts.test_conv2d_forward()
   local conv = nn.SpatialConvolution(3,8, 3,3, 1,1, 1,1)
-  local scwn = SpatialConvolutionWN.new(conv)
+  local scwn = WeightNorm.new(conv)
 
   local input = image.lena()
   local output = scwn:forward(input)
@@ -37,7 +37,7 @@ end
 
 function ts.test_conv2d_backward_zero_grad()
   local conv = nn.SpatialConvolution(3,8, 3,3, 1,1, 1,1)
-  local scwn = SpatialConvolutionWN.new(conv)
+  local scwn = WeightNorm.new(conv)
 
   local input = image.lena()
 
@@ -54,13 +54,14 @@ local function generic_learning_test(SpatialConvolution, type)
   torch.manualSeed(1234)
   cutorch.manualSeed(1234)
   local conv = SpatialConvolution(1,1, 3,3, 1,1, 1,1)
-  local scwn = SpatialConvolutionWN.new(conv):type(type)
-  local input = torch.randn(1, 32, 32):type(type)
-  local target = input:clone()
+  local scwn = WeightNorm.new(conv):type(type)
   local crit = nn.MSECriterion():type(type)
 
   local lr = 0.1
   for i = 1, 100 do
+    local input = torch.randn(1, 32, 32):type(type)
+    local target = input:clone()
+
     scwn:zeroGradParameters()
     local output = scwn:forward(input)
     local loss = crit:forward(output, target)
@@ -77,22 +78,6 @@ local function generic_learning_test(SpatialConvolution, type)
   tester:eq(V_norm, expected_V, 1e-6, 'expected learnt V to be identity')
 end
 
-function ts.test_conv2d_init_pass()
-  torch.manualSeed(1234)
-  cutorch.manualSeed(1234)
-  local conv = nn.SpatialConvolution(1,1, 3,3, 1,1, 1,1)
-  local scwn = SpatialConvolutionWN.new(conv)
-  local input = torch.randn(1, 1, 32, 32) * 100
-
-  scwn.init_pass = true
-  scwn:forward(input)
-  scwn.init_pass = false
-
-  local output_after_init = scwn:forward(input)
-  tester:eq(output_after_init[{1, 1}]:var(), 1, 1e-6, 'expected unit variance output after init')
-  tester:eq(output_after_init[{1, 1}]:mean(), 0, 1e-6, 'expected zero mean output after init')
-end
-
 function ts.test_conv2d_learning()
   generic_learning_test(nn.SpatialConvolution, 'torch.FloatTensor')
 end
@@ -103,6 +88,22 @@ end
 
 function ts.test_conv2d_learning_cudnn()
   generic_learning_test(cudnn.SpatialConvolution, 'torch.CudaTensor')
+end
+
+function ts.test_conv2d_init_pass()
+  torch.manualSeed(1234)
+  cutorch.manualSeed(1234)
+  local conv = nn.SpatialConvolution(1,1, 3,3, 1,1, 1,1)
+  local scwn = WeightNorm.new(conv)
+  local input = torch.randn(1, 1, 32, 32) * 100
+
+  scwn.init_pass = true
+  scwn:forward(input)
+  scwn.init_pass = false
+
+  local output_after_init = scwn:forward(input)
+  tester:eq(output_after_init[{1, 1}]:var(), 1, 1e-6, 'expected unit variance output after init')
+  tester:eq(output_after_init[{1, 1}]:mean(), 0, 1e-6, 'expected zero mean output after init')
 end
 
 return ts
