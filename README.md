@@ -1,3 +1,5 @@
+*Warning: this code has not yet been tested in complete networks, use at own risk*
+
 # Weight normalization
 
 This is an unofficial Torch implementation of ["Weight Normalization: A Simple Reparameterization to Accelerate Training of Deep Neural Networks"](http://arxiv.org/abs/1602.07868)
