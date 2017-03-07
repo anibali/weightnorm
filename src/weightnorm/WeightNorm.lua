@@ -21,8 +21,8 @@ function(self, module, weight_feat_dim, output_feat_dim)
   self.init_pass = false
   self.V = torch.Tensor(module.weight:size())
   self.g = torch.Tensor(module.weight:size(weight_feat_dim))
-  self.V_grad = torch.Tensor()
-  self.g_grad = torch.Tensor()
+  self.V_grad = torch.Tensor():resizeAs(self.V)
+  self.g_grad = torch.Tensor():resizeAs(self.g)
 
   self.V:copy(self.module.weight)
   self.g:fill(1)
@@ -61,9 +61,13 @@ function(self, input)
     local x = output:transpose(1, odim):contiguous():view(feats, -1)
     local mean = x:mean(2):view(feats)
     local var = x:var(2):view(feats)
-    local scale_init = torch.rsqrt(var + 1e-8)
-    self.g:copy(scale_init)
-    torch.cmul(self.module.bias, -mean, scale_init)
+    local one_on_std = torch.rsqrt(var + 1e-8)
+    self.g:copy(one_on_std)
+    torch.cmul(self.module.bias, -mean, one_on_std)
+
+    for i = 1, feats do
+      output:select(odim, i):add(-mean[i]):mul(one_on_std[i])
+    end
   end
 
   self.output = output
