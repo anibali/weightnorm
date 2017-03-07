@@ -1,5 +1,3 @@
-*Warning: this code has not yet been tested in complete networks, use at own risk*
-
 # Weight normalization
 
 This is an unofficial Torch implementation of ["Weight Normalization: A Simple Reparameterization to Accelerate Training of Deep Neural Networks"](http://arxiv.org/abs/1602.07868)
@@ -15,7 +13,7 @@ local wn = require('weightnorm')
 -- Construct the neural network as usual, but use `wn()` to wrap weighted
 -- layers that you want to be weight normalized.
 local net = nn.Sequential()
-net:add(wn(nn.Linear(784, 200)))
+net:add(wn(nn.Linear(32*32, 200)))
 net:add(nn.ReLU())
 net:add(wn(nn.Linear(200, 200)))
 net:add(nn.ReLU())
@@ -29,4 +27,18 @@ net:forward(batch_input)
 net:set_init_pass(false)
 ```
 
-Check out the `test/` folder for more usage examples.
+## Examples
+
+The examples require [torchnet](https://github.com/torchnet/torchnet) to be
+installed.
+
+### MNIST MLP
+
+1. Download MNIST: `bash examples/mnist/download_mnist.sh`
+2. Train the network: `th examples/mnist/train_mlp_mnist.lua`
+
+## Tests
+
+Run the tests with the following command:
+
+`th test/run_tests.lua`
